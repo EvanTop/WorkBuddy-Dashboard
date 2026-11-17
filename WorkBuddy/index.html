@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WorkBuddy Dashboard</title>
+<style>
+  :root{
+    --lime:#846BFF;          /* 主色 · 数字紫 */
+    --lime-deep:#6A4FE0;
+    --lime-dark:#4A3399;
+    --ink:#101211;
+    --bg:#F4F4EF;
+    --card:#FFFFFF;
+    --line:#E3E3DC;
+    --muted:#6B6F68;
+    --soft:#F1EDFF;
+    --danger:#C0392B;
+    --radius:22px;
+    --pill:999px;
+    --shadow:0 1px 2px rgba(16,18,17,.04);
+  }
+  html.dark{
+    --ink:#EDEFE8;
+    --bg:#0E100F;
+    --card:#161917;
+    --line:#262A25;
+    --muted:#98A093;
+    --soft:#241C46;
+    --shadow:0 1px 2px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,"SF Pro Text","PingFang SC",Inter,system-ui,sans-serif;
+    font-size:14px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  .num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";}
+  h1,h2,h3{margin:0;font-weight:600;}
+  a{color:inherit;}
+
+  /* ---------- 侧边导航 ---------- */
+  #rail{
+    position:fixed;top:0;left:0;bottom:0;width:220px;
+    background:var(--card);border-right:1px solid var(--line);
+    padding:22px 16px;display:flex;flex-direction:column;gap:26px;z-index:30;
+  }
+  .brand{display:flex;align-items:center;gap:10px;padding:0 6px;}
+  .brand .mark{
+    width:30px;height:30px;border-radius:10px;background:var(--lime);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:15px;color:#fff;letter-spacing:-.5px;
+  }
+  .brand .txt{display:flex;flex-direction:column;line-height:1.25;}
+  .brand .txt b{font-size:14px;font-weight:600;}
+  .brand .txt span{font-size:11px;color:var(--muted);}
+  nav{display:flex;flex-direction:column;gap:4px;}
+  nav a{
+    display:flex;align-items:center;gap:10px;
+    padding:9px 12px;border-radius:var(--pill);text-decoration:none;
+    font-size:13px;font-weight:600;color:var(--muted);transition:background .16s,color .16s;
+  }
+  nav a .dot{width:6px;height:6px;border-radius:50%;background:var(--line);}
+  nav a:hover{background:var(--soft);color:var(--ink);}
+  nav a.on{background:var(--lime);color:#fff;}
+  nav a.on .dot{background:#fff;}
+  .rail-foot{margin-top:auto;font-size:11px;color:var(--muted);padding:0 8px;line-height:1.6;}
+  .rail-foot b{color:var(--ink);font-weight:600;}
+
+  /* ---------- 主体 ---------- */
+  main{
+    margin-left:220px;padding:20px 28px 60px;max-width:1440px;
+  }
+  #sysbar{
+    display:flex;flex-wrap:nowrap;gap:10px 18px;align-items:center;
+    border:1px solid var(--line);background:var(--card);border-radius:var(--pill);
+    padding:10px 16px;font-size:12px;color:var(--muted);box-shadow:var(--shadow);
+    overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;
+    scrollbar-width:none;cursor:grab;
+  }
+  #sysbar::-webkit-scrollbar{display:none;}
+  #sysbar.dragging{cursor:grabbing;}
+  #sysbar .cell{display:flex;align-items:center;gap:6px;min-width:0;flex:0 0 auto;}
+  #sysbar .k{color:var(--muted);flex:0 0 auto;}
+  #sysbar .v{color:var(--ink);font-weight:600;white-space:nowrap;flex:0 0 auto;}
+  #sysbar .sep{width:1px;height:12px;background:var(--line);flex:0 0 auto;}
+
+  header.head{
+    display:flex;justify-content:space-between;align-items:flex-start;gap:16px;
+    margin:18px 0 22px;flex-wrap:wrap;
+  }
+  header.head .title h1{font-size:26px;letter-spacing:-.4px;}
+  header.head .title p{margin:6px 0 0;font-size:12px;color:var(--muted);}
+  .status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+  .live{
+    display:inline-flex;align-items:center;gap:7px;background:var(--card);
+    border:1px solid var(--line);border-radius:var(--pill);padding:7px 14px;
+    font-size:12px;font-weight:600;box-shadow:var(--shadow);
+  }
+  .live .bulb{width:8px;height:8px;border-radius:50%;background:var(--lime);animation:breathe 2s ease-in-out infinite;}
+  .live.off .bulb{background:#B9BDB4;animation:none;}
+  @keyframes breathe{0%,100%{box-shadow:0 0 0 0 rgba(132,107,255,.55);}50%{box-shadow:0 0 0 6px rgba(132,107,255,0);}}
+  .btn{
+    border:1px solid var(--line);background:var(--card);color:var(--ink);
+    border-radius:var(--pill);padding:7px 16px;font-size:12px;font-weight:600;
+    cursor:pointer;font-family:inherit;transition:background .16s,border-color .16s;box-shadow:var(--shadow);
+  }
+  .btn:hover{background:var(--soft);border-color:var(--lime);}
+  .btn:active{transform:translateY(1px);}
+
+  section{margin-bottom:26px;scroll-margin-top:16px;}
+  .sec-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;margin:0 2px 12px;}
+  .sec-head h2{font-size:14px;letter-spacing:.2px;}
+  .sec-head .hint{font-size:11px;color:var(--muted);}
+
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;box-shadow:var(--shadow);
+  }
+  .card h3{font-size:13px;color:var(--ink);font-weight:600;margin-bottom:2px;}
+  .card .sub{font-size:11px;color:var(--muted);margin-bottom:14px;}
+
+  /* ---------- KPI ---------- */
+  #kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;}
+  .kpi{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px 15px;position:relative;box-shadow:var(--shadow);
+    display:flex;flex-direction:column;gap:2px;min-height:132px;
+  }
+  .kpi .klabel{font-size:12px;color:var(--muted);font-weight:600;display:flex;align-items:center;gap:7px;}
+  .kpi .tag{
+    font-size:9px;letter-spacing:.6px;font-weight:700;color:#fff;background:var(--lime);
+    border-radius:var(--pill);padding:2px 7px;
+  }
+  .kpi .kval{font-size:clamp(28px,2.9vw,40px);font-weight:600;letter-spacing:-1.2px;line-height:1.15;margin-top:4px;font-variant-numeric:tabular-nums;
+    white-space:nowrap;overflow:hidden;max-width:100%;}
+  .kpi .kval small{font-size:15px;font-weight:600;letter-spacing:0;margin-left:2px;}
+  .kpi .kexact{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .kpi .knote{
+    margin-top:auto;font-size:11px;color:var(--muted);
+    border-top:1px dashed var(--line);padding-top:7px;
+  }
+  .kpi .knote b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums;}
+  .kpi.accent{background:linear-gradient(180deg,var(--soft),var(--card) 62%);}
+
+  /* ---------- 图表 ---------- */
+  .grid-2{display:grid;grid-template-columns:1.55fr 1fr;gap:14px;}
+  .grid-2b{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .chart-wrap{position:relative;}
+  svg{display:block;width:100%;height:auto;overflow:visible;}
+  .axis{font-size:11px;fill:var(--muted);font-variant-numeric:tabular-nums;letter-spacing:.1px;}
+  .axis.v{fill:var(--ink);font-weight:600;}
+  .bar-hit{fill:transparent;cursor:default;}
+  .bar-hover{transition:opacity .1s;}
+  .no-labels{opacity:0;}
+  .gridline{stroke:var(--line);stroke-width:1;stroke-dasharray:3 4;}
+  #tip,#mtip{
+    position:absolute;pointer-events:none;opacity:0;transition:opacity .12s;
+    background:var(--ink);color:var(--bg);border-radius:12px;padding:8px 10px;
+    font-size:11px;line-height:1.55;white-space:nowrap;z-index:20;transform:translate(-50%,-120%);
+    font-variant-numeric:tabular-nums;
+  }
+  #tip b,#mtip b{color:var(--lime);font-weight:600;}
+
+  /* 环形图 */
+  .donut-flex{display:flex;gap:20px;align-items:center;flex-wrap:wrap;}
+  .donut-flex .ring{flex:0 0 186px;width:186px;}
+  .donut-center{font-size:11px;fill:var(--muted);}
+  .donut-big{font-size:22px;font-weight:600;fill:var(--ink);font-variant-numeric:tabular-nums;}
+  table.legend{width:100%;border-collapse:collapse;font-size:12px;flex:1 1 240px;min-width:230px;}
+  table.legend th{
+    text-align:right;font-weight:600;color:var(--muted);font-size:10.5px;
+    padding:0 0 7px;border-bottom:1px solid var(--line);letter-spacing:.3px;
+  }
+  table.legend th:first-child{text-align:left;}
+  table.legend td{padding:6px 0;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums;}
+  table.legend td:first-child{text-align:left;}
+  table.legend tr:last-child td{border-bottom:0;}
+  .swatch{display:inline-block;width:8px;height:8px;border-radius:3px;margin-right:7px;vertical-align:1px;}
+
+  /* 横条 */
+  .barrow{display:grid;grid-template-columns:128px 1fr 72px;gap:10px;align-items:center;margin-bottom:9px;font-size:12px;}
+  .barrow .bname{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .track{height:9px;border-radius:var(--pill);background:var(--soft);overflow:hidden;}
+  .track i{display:block;height:100%;border-radius:var(--pill);background:var(--lime);}
+  .barrow .bval{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums;}
+  .barrow .bval b{color:var(--ink);font-weight:600;}
+
+  /* 堆叠条 */
+  .agent-row{display:grid;grid-template-columns:78px 1fr 54px;gap:10px;align-items:center;font-size:12px;margin-bottom:10px;}
+  .stack{display:flex;height:10px;border-radius:var(--pill);overflow:hidden;background:var(--soft);}
+  .stack i{display:block;height:100%;}
+  .stack i.ok{background:var(--lime);}
+  .stack i.failed{background:#D9534F;}
+  .stack i.cancelled{background:#C2C6BC;}
+  .agent-row .tot{text-align:right;font-variant-numeric:tabular-nums;color:var(--muted);}
+  .agent-row .tot b{color:var(--ink);font-weight:600;}
+  .legend-inline{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:12px;flex-wrap:wrap;}
+  .legend-inline span{display:inline-flex;align-items:center;gap:5px;}
+  .legend-inline i{width:8px;height:8px;border-radius:3px;display:inline-block;}
+
+  /* 热力图 */
+  #heat{display:grid;grid-template-columns:34px repeat(24,minmax(0,1fr));gap:3px;font-size:10px;color:var(--muted);}
+  #heat .rl{display:flex;align-items:center;justify-content:flex-end;padding-right:4px;}
+  #heat .cl{text-align:center;padding-bottom:2px;white-space:nowrap;}
+  .cell{height:17px;border-radius:4px;background:#EDE9FF;transition:transform .1s;}
+  html.dark .cell{background:#241C46;}
+  .cell:hover{transform:scale(1.18);outline:1px solid var(--ink);}
+  .heat-scale{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);margin-top:12px;}
+  .heat-scale i{width:16px;height:9px;border-radius:2px;display:inline-block;}
+
+  /* 表格 */
+  .tools-line{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;}
+  input#q{
+    flex:1 1 220px;min-width:180px;border:1px solid var(--line);background:var(--bg);
+    color:var(--ink);border-radius:var(--pill);padding:9px 15px;font-size:12px;font-family:inherit;outline:none;
+  }
+  input#q:focus{border-color:var(--lime);background:var(--card);}
+  .count-chip{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:var(--pill);padding:5px 12px;}
+  .tablebox{max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:16px;-webkit-overflow-scrolling:touch;}
+  table.data{width:100%;min-width:700px;border-collapse:collapse;font-size:12px;}
+  table.data thead th{
+    position:sticky;top:0;background:var(--card);z-index:2;
+    text-align:left;font-weight:600;font-size:11px;color:var(--muted);
+    padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;cursor:pointer;user-select:none;
+  }
+  table.data thead th.r{text-align:right;}
+  table.data thead th:hover{color:var(--ink);}
+  table.data thead th .arrow{opacity:.45;font-size:9px;margin-left:4px;}
+  table.data tbody td{padding:9px 12px;border-bottom:1px solid var(--line);}
+  table.data tbody tr:last-child td{border-bottom:0;}
+  table.data tbody tr:hover{background:var(--soft);}
+  table.data td.r,table.data th.r{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
+  table.data .c-num{min-width:70px;}
+  table.data .c-token{min-width:112px;}
+  table.data .c-date{min-width:96px;white-space:nowrap;}
+  table.data th.c-title{min-width:200px;}
+  .celltitle{display:flex;align-items:center;gap:8px;min-width:0;}
+  .celltitle span.txt{
+    display:block;max-width:min(520px,32vw);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  }
+  .sdot{width:7px;height:7px;border-radius:50%;flex:0 0 7px;}
+  .sdot.completed{background:var(--lime-deep);}
+  .sdot.ok{background:var(--lime-deep);}
+  .sdot.failed{background:#D9534F;}
+  .sdot.error{background:#D9534F;}
+  .sdot.cancelled{background:#B9BDB4;}
+  .sdot.working{background:#E4A11B;}
+  .sdot.in_progress{background:#E4A11B;}
+  .sdot.unknown{background:var(--line);}
+
+  /* 产出与记忆 / 技能与系统 */
+  .mini-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;}
+  .stat4{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+  .stat4 .s{background:var(--soft);border-radius:16px;padding:11px 13px;}
+  .stat4 .s .n{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.5px;}
+  .stat4 .s .l{font-size:11px;color:var(--muted);}
+  ul.recent{list-style:none;margin:0;padding:0;font-size:12px;}
+  ul.recent li{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);}
+  ul.recent li:last-child{border-bottom:0;}
+  ul.recent li .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  ul.recent li .tm{color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;font-size:11px;}
+
+  .footer-note{margin-top:26px;font-size:11px;color:var(--muted);text-align:center;}
+  .placeholder{font-size:12px;color:var(--muted);padding:26px 0;text-align:center;}
+
+  /* ---------- 响应式 ---------- */
+  @media (max-width:1180px){
+    #kpis{grid-template-columns:repeat(2,minmax(0,1fr));}
+    .grid-2,.grid-2b,.mini-grid{grid-template-columns:1fr;}
+  }
+  @media (max-width:900px){
+    #rail{
+      position:sticky;top:0;left:0;right:0;width:auto;bottom:auto;
+      flex-direction:row;align-items:center;gap:14px;padding:10px 14px;
+      border-right:0;border-bottom:1px solid var(--line);overflow-x:auto;
+    }
+    .brand .txt{display:none;}
+    nav{flex-direction:row;gap:6px;}
+    nav a{white-space:nowrap;padding:7px 13px;font-size:12px;}
+    nav a .dot{display:none;}
+    .rail-foot{display:none;}
+    main{margin-left:0;padding:14px 14px 48px;}
+    #sysbar{font-size:11px;}
+    header.head .title h1{font-size:21px;}
+    .donut-flex .ring{flex:0 0 150px;width:150px;}
+  }
+  @media (max-width:560px){
+    #kpis{grid-template-columns:1fr;}
+    .barrow{grid-template-columns:96px 1fr 62px;}
+    .celltitle span.txt{max-width:200px;}
+  }
+</style>
+</head>
+<body>
+
+<aside id="rail">
+  <div class="brand">
+    <div class="mark">W</div>
+    <div class="txt"><b>WorkBuddy Dashboard</b><span>Usage · Live · Local</span></div>
+  </div>
+  <nav id="nav">
+    <a href="#overview" class="on"><span class="dot"></span>概览</a>
+    <a href="#trend"><span class="dot"></span>趋势</a>
+    <a href="#models"><span class="dot"></span>模型与工具</a>
+    <a href="#projects"><span class="dot"></span>会话</a>
+    <a href="#output"><span class="dot"></span>技能与系统</a>
+  </nav>
+  <div class="rail-foot">
+    数据实时同步自本机 WorkBuddy<br><b>只读访问，绝不改库</b>
+  </div>
+</aside>
+
+<main>
+  <div id="sysbar">
+    <div class="cell"><span class="k">数据源</span><span class="v" id="sysDb" title="">—</span></div>
+    <span class="sep"></span>
+    <div class="cell"><span class="k">库修改</span><span class="v num" id="sysMtime">—</span></div>
+    <span class="sep"></span>
+    <div class="cell"><span class="k">API 延迟</span><span class="v num" id="sysLat">—</span></div>
+    <span class="sep"></span>
+    <div class="cell"><span class="k">缓存年龄</span><span class="v num" id="sysCache">—</span></div>
+    <span class="sep"></span>
+    <div class="cell"><span class="k">覆盖</span><span class="v num" id="sysSpan">—</span></div>
+  </div>
+
+  <header class="head">
+    <div class="title">
+      <h1>WorkBuddy Dashboard</h1>
+      <p>本地数据库实时汇总 · 每 5 秒自动刷新</p>
+    </div>
+    <div class="status">
+      <div class="live off" id="liveTag"><span class="bulb"></span><span id="liveText">连接中</span></div>
+      <div class="live"><span class="k" style="color:var(--muted);font-weight:600">最后同步</span><span class="num" id="syncTime">--:--:--</span></div>
+      <button class="btn" id="btnRefresh">刷新</button>
+      <button class="btn" id="btnTheme">深色</button>
+    </div>
+  </header>
+
+  <section id="overview">
+    <div class="sec-head"><h2>概览</h2><span class="hint">KPI 均取自 /api/stats 实时数据</span></div>
+    <div id="kpis"></div>
+  </section>
+
+  <section id="trend">
+    <div class="sec-head"><h2>趋势</h2><span class="hint" id="trendHint"></span></div>
+    <div class="grid-2">
+      <div class="card">
+        <h3>每日 Token</h3>
+        <div class="sub" id="dailySub">—</div>
+        <div class="chart-wrap" id="dailyWrap">
+          <div id="dailyChart"></div>
+          <div id="tip"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>月度 Token</h3>
+        <div class="sub" id="monthlySub">—</div>
+        <div class="chart-wrap" id="monthlyWrap">
+          <div id="monthlyChart"></div>
+          <div id="mtip"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="models">
+    <div class="sec-head"><h2>模型与工具</h2><span class="hint">环形图取 Token 前 6 名，其余合并为“其他”</span></div>
+    <div class="grid-2b">
+      <div class="card">
+        <h3>模型用量分布</h3>
+        <div class="sub" id="modelSub">—</div>
+        <div class="donut-flex">
+          <div class="ring" id="donut"></div>
+          <table class="legend" id="modelTable"></table>
+        </div>
+      </div>
+      <div class="card">
+        <h3>工具调用 Top 12</h3>
+        <div class="sub" id="toolSub">—</div>
+        <div id="toolList"></div>
+      </div>
+    </div>
+    <div class="grid-2b" style="margin-top:14px">
+      <div class="card">
+        <h3>会话状态分布</h3>
+        <div class="sub" id="agentSub">—</div>
+        <div id="agentList"></div>
+        <div class="legend-inline">
+          <span><i style="background:var(--lime)"></i>完成</span>
+          <span><i style="background:#D9534F"></i>错误</span>
+          <span><i style="background:#C2C6BC"></i>取消/其他</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>活跃热力图</h3>
+        <div class="sub" id="heatSub">—</div>
+        <div id="heat"></div>
+        <div class="heat-scale">
+          <span>少</span>
+          <i style="background:#EDE9FF"></i><i style="background:#D6CCFF"></i><i style="background:#846BFF"></i><i style="background:#6A4FE0"></i><i style="background:#4A3399"></i>
+          <span>多</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="projects">
+    <div class="sec-head"><h2>会话</h2><span class="hint">点击表头切换排序 · 输入关键词搜索</span></div>
+    <div class="card">
+      <div class="tools-line">
+        <input id="q" type="search" placeholder="搜索会话标题关键词…" autocomplete="off">
+        <span class="count-chip num" id="convCount">—</span>
+      </div>
+      <div class="tablebox">
+        <table class="data" id="convTable">
+          <thead>
+            <tr>
+              <th data-key="title" class="c-title">会话标题</th>
+              <th data-key="model" class="c-date">模型</th>
+              <th data-key="status">状态</th>
+              <th data-key="used" class="r c-num">上下文占用<span class="arrow"></span></th>
+              <th data-key="credit" class="r c-token">消费积分<span class="arrow"></span></th>
+              <th data-key="created" class="c-date">最近活动<span class="arrow"></span></th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section id="output">
+    <div class="sec-head"><h2>技能与系统</h2><span class="hint">技能库、最近会话、系统状态</span></div>
+    <div class="mini-grid">
+      <div class="card">
+        <h3>技能类型 Top 10</h3>
+        <div class="sub" id="prodSub">—</div>
+        <div id="prodExt"></div>
+      </div>
+      <div class="card">
+        <h3>最近会话</h3>
+        <div class="sub" id="prodRecentSub">—</div>
+        <ul class="recent" id="prodRecent"></ul>
+      </div>
+      <div class="card">
+        <h3>技能来源分布</h3>
+        <div class="sub" id="memSub">—</div>
+        <div id="memList"></div>
+      </div>
+      <div class="card">
+        <h3>系统与数据源</h3>
+        <div class="sub" id="apprSub">—</div>
+        <div class="stat4" id="apprGrid"></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">WorkBuddy Dashboard · 本地只读看板 · 数据不离开本机</div>
+</main>
+
+<script>
+(function(){
+"use strict";
+
+/* ---------------- 工具函数 ---------------- */
+var N = function(v){ var n = Number(v); return isFinite(n) ? n : 0; };
+var fmtInt = function(v){ return N(v).toLocaleString('en-US'); };
+function fmtBig(v){
+  var n = N(v);
+  if (Math.abs(n) >= 1e8) return (n/1e8).toFixed(2);
+  if (Math.abs(n) >= 1e4) return (n/1e4).toFixed(1);
+  return fmtInt(n);
+}
+function unitOf(v){
+  var n = Math.abs(N(v));
+  if (n >= 1e8) return '亿';
+  if (n >= 1e4) return '万';
+  return '';
+}
+function pct(a,b){ b = N(b); return b ? (N(a)*100/b) : 0; }
+function esc(s){
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){
+    return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c];
+  });
+}
+function hhmmss(){
+  var d = new Date();
+  var p = function(x){ return (x<10?'0':'')+x; };
+  return p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+}
+function el(id){ return document.getElementById(id); }
+
+var WEEK = ['周日','周一','周二','周三','周四','周五','周六'];
+
+/* ---------------- 访问口令 ---------------- */
+var TOKEN_KEY = 'evanworkbuddy_token';
+var PANEL_TOKEN = '';
+try{ PANEL_TOKEN = localStorage.getItem(TOKEN_KEY) || ''; }catch(e){}
+try{
+  var _tk = new URLSearchParams(location.search).get('token');
+  if (_tk){
+    PANEL_TOKEN = _tk;
+    try{ localStorage.setItem(TOKEN_KEY, _tk); }catch(e){}
+  }
+}catch(e){}
+function tokenQS(){
+  return PANEL_TOKEN ? ('&token=' + encodeURIComponent(PANEL_TOKEN)) : '';
+}
+
+/* ---------------- 主题 ---------------- */
+var THEME_KEY = 'evanworkbuddy-theme';
+function applyTheme(dark){
+  document.documentElement.classList.toggle('dark', !!dark);
+  el('btnTheme').textContent = dark ? '浅色' : '深色';
+  try{ localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); }catch(e){}
+}
+var savedDark = false;
+try{ savedDark = localStorage.getItem(THEME_KEY) === 'dark'; }catch(e){}
+applyTheme(savedDark);
+el('btnTheme').addEventListener('click', function(){
+  applyTheme(!document.documentElement.classList.contains('dark'));
+  if (state.data) renderAll(state.data);
+});
+
+/* ---------------- 状态 ---------------- */
+var state = { data:null, sort:{key:'used', desc:true}, query:'' };
+
+/* ---------------- 概览 KPI ---------------- */
+function renderKpis(d){
+  var t = d.tokens || {}, c = d.counts || {}, td = d.today || {}, ss = d.skill_stats || {};
+  var cards = [
+    { label:'总 Token', val:t.total, unit:unitOf(t.total), exact:'精确值 ' + fmtInt(t.total),
+      note:'平均 <b>' + fmtBig(t.avg) + ' / 次</b> · 峰值单次 <b>' + fmtInt(t.peak) + '</b>', accent:true },
+    { label:'今日 Token', tag:'TODAY', val:td.tokens, unit:unitOf(td.tokens), exact:'精确值 ' + fmtInt(td.tokens),
+      note:'今日请求 <b>' + fmtInt(td.requests) + '</b> · 新会话 <b>' + fmtInt(td.sessions) + '</b>' },
+    { label:'缓存命中率', val:N(t.cache_hit_rate).toFixed(2), unit:'%', exact:'缓存 ' + fmtInt(t.cached),
+      note:'输入 Token <b>' + fmtBig(t.input) + unitOf(t.input) + '</b>' },
+    { label:'请求次数', val:t.requests, unit:'', exact:'精确值 ' + fmtInt(t.requests),
+      note:'思考 Token <b>' + fmtBig(t.reasoning) + unitOf(t.reasoning) + '</b>' },
+    { label:'工具调用', val:c.tool_calls, unit:'', exact:'精确值 ' + fmtInt(c.tool_calls),
+      note:'工具种类 <b>' + fmtInt(c.tools) + '</b> · traces <b>' + fmtInt(c.traces) + '</b>' },
+    { label:'会话总数', val:c.sessions, unit:'', exact:'精确值 ' + fmtInt(c.sessions),
+      note:'工作区 <b>' + fmtInt(c.workspaces) + '</b> · 活跃 <b>' + fmtInt(c.active_days) + ' 天</b>' },
+    { label:'活跃天数', val:c.active_days, unit:'', exact:'跨度 ' + fmtInt(t.span_days) + ' 天',
+      note:'<b>' + esc(t.first_day || '—') + '</b> → <b>' + esc(t.last_day || '—') + '</b>' },
+    { label:'技能总数', val:c.skills, unit:'', exact:'可调用 ' + fmtInt(ss.invocable) + ' 项',
+      note:'已启用 <b>' + fmtInt(ss.enabled) + '</b> 项 · 来源 <b>' + Object.keys(ss.by_source || {}).length + '</b> 类' }
+  ];
+  el('kpis').innerHTML = cards.map(function(k){
+    var raw = k.val;
+    var shown = (typeof raw === 'string') ? raw : (N(raw) >= 10000 ? fmtBig(raw) : fmtInt(raw));
+    return '<div class="kpi' + (k.accent ? ' accent' : '') + '">'
+      + '<div class="klabel">' + esc(k.label) + (k.tag ? '<span class="tag">' + esc(k.tag) + '</span>' : '') + '</div>'
+      + '<div class="kval">' + esc(shown) + (k.unit ? '<small>' + esc(k.unit) + '</small>' : '') + '</div>'
+      + '<div class="kexact">' + esc(k.exact) + '</div>'
+      + '<div class="knote">' + k.note + '</div>'
+      + '</div>';
+  }).join('');
+  fitKpiValues();
+}
+
+/* KPI 大数字自适应 */
+function fitKpiValues(){
+  document.querySelectorAll('#kpis .kval').forEach(function(node){
+    node.style.fontSize = '';
+    if (!node.clientWidth) return;
+    var size = parseFloat(getComputedStyle(node).fontSize) || 32;
+    var guard = 0;
+    while (node.scrollWidth > node.clientWidth + 1 && size > 19 && guard++ < 26){
+      size -= 1;
+      node.style.fontSize = size + 'px';
+    }
+  });
+}
+
+/* ---------------- 每日面积图 ---------------- */
+var LABEL_MIN_GAP = 46;
+var LABEL_MAX_NUM = 6;
+function chartWidth(box, min, fallback){
+  var w = Math.round(box.clientWidth || 0);
+  if (!isFinite(w) || w < min) w = fallback;
+  return w;
+}
+function renderDaily(daily){
+  var box = el('dailyChart');
+  if (!daily || !daily.length){ box.innerHTML = '<div class="placeholder">暂无数据</div>'; return; }
+  var W = chartWidth(box, 320, 620), H = 270, pL = 58, pR = 18, pT = 16, pB = 30;
+  var max = Math.max.apply(null, daily.map(function(x){ return N(x.tokens); }).concat([1]));
+  var n = daily.length;
+  var xf = function(i){ return n === 1 ? pL + (W-pL-pR)/2 : pL + (W-pL-pR) * i/(n-1); };
+  var yf = function(v){ return pT + (H-pT-pB) * (1 - N(v)/max); };
+
+  var pts = daily.map(function(x,i){ return [xf(i), yf(x.tokens)]; });
+  var line = pts.map(function(p,i){ return (i? 'L':'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1); }).join(' ');
+  var area = line + ' L' + pts[pts.length-1][0].toFixed(1) + ' ' + (H-pB) + ' L' + pts[0][0].toFixed(1) + ' ' + (H-pB) + ' Z';
+
+  var grid = '', ticks = 4;
+  for (var g=0; g<=ticks; g++){
+    var v = max * g/ticks, y = yf(v);
+    grid += '<line class="gridline" x1="' + pL + '" y1="' + y.toFixed(1) + '" x2="' + (W-pR) + '" y2="' + y.toFixed(1) + '"/>'
+         +  '<text class="axis" x="' + (pL-8) + '" y="' + (y+3.5).toFixed(1) + '" text-anchor="end">' + esc(fmtBig(v)) + '</text>';
+  }
+  var plotW = W - pL - pR;
+  var pxPerDay = n > 1 ? plotW/(n-1) : plotW;
+  var stepGap = Math.max(1, Math.ceil(LABEL_MIN_GAP / Math.max(pxPerDay, 0.001)));
+  var stepNum = Math.max(1, Math.ceil((n-1)/Math.max(1, LABEL_MAX_NUM-1)));
+  var step = Math.max(stepGap, stepNum);
+  var idxs = [];
+  for (var li=0; li<n; li+=step) idxs.push(li);
+  if (idxs[idxs.length-1] !== n-1){
+    if (idxs.length > 1 && (n-1) - idxs[idxs.length-1] < step*0.6) idxs.pop();
+    idxs.push(n-1);
+  }
+  var xlab = '';
+  idxs.forEach(function(i){
+    xlab += '<text class="axis" x="' + xf(i).toFixed(1) + '" y="' + (H-8) + '" text-anchor="middle">' + esc(String(daily[i].day).slice(5)) + '</text>';
+  });
+
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" style="width:100%;height:270px">'
+    + '<defs><linearGradient id="gradDaily" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0%" stop-color="#846BFF" stop-opacity="0.12"/>'
+    + '<stop offset="100%" stop-color="#846BFF" stop-opacity="0"/>'
+    + '</linearGradient></defs>'
+    + grid
+    + '<path d="' + area + '" fill="url(#gradDaily)"/>'
+    + '<path d="' + line + '" fill="none" stroke="#846BFF" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'
+    + '<line id="hoverLine" x1="0" y1="' + pT + '" x2="0" y2="' + (H-pB) + '" stroke="#101211" stroke-opacity="0" stroke-width="1" stroke-dasharray="3 3"/>'
+    + '<circle id="hoverDot" r="4.5" fill="#846BFF" stroke="#101211" stroke-width="1.5" opacity="0"/>'
+    + '<g id="xlabels">' + xlab + '</g>'
+    + '</svg>';
+
+  var svg = box.querySelector('svg');
+  var hoverLine = box.querySelector('#hoverLine');
+  var hoverDot = box.querySelector('#hoverDot');
+  var tip = el('tip');
+
+  function move(ev){
+    var rect = svg.getBoundingClientRect();
+    var relX = (ev.clientX - rect.left) / rect.width * W;
+    var idx = n === 1 ? 0 : Math.round((relX - pL) / ((W-pL-pR)/(n-1)));
+    idx = Math.max(0, Math.min(n-1, idx));
+    var px = xf(idx), py = yf(daily[idx].tokens);
+    hoverLine.setAttribute('x1', px); hoverLine.setAttribute('x2', px); hoverLine.setAttribute('stroke-opacity', '0.35');
+    hoverDot.setAttribute('cx', px); hoverDot.setAttribute('cy', py); hoverDot.setAttribute('opacity', '1');
+    var leftPx = px / W * rect.width;
+    var topPx = py / H * rect.height + 8;
+    tip.style.left = Math.max(8, Math.min(rect.width-8, leftPx)) + 'px';
+    tip.style.top = Math.max(0, topPx) + 'px';
+    tip.style.opacity = '1';
+    tip.innerHTML = esc(daily[idx].day) + '<br>Token <b>' + esc(fmtInt(daily[idx].tokens)) + '</b><br>请求 <b>' + esc(fmtInt(daily[idx].requests)) + '</b>';
+  }
+  function leave(){
+    hoverLine.setAttribute('stroke-opacity','0');
+    hoverDot.setAttribute('opacity','0');
+    tip.style.opacity = '0';
+  }
+  svg.addEventListener('mousemove', move);
+  svg.addEventListener('mouseleave', leave);
+
+  var first = daily[0], last = daily[n-1];
+  el('dailySub').textContent = first.day + ' → ' + last.day + ' · 共 ' + n + ' 天 · 峰值 ' + fmtBig(max) + ' tokens';
+  el('trendHint').textContent = '覆盖 ' + first.day + ' 至 ' + last.day;
+}
+
+/* ---------------- 月度柱状图 ---------------- */
+function renderMonthly(monthly){
+  var box = el('monthlyChart');
+  if (!monthly || !monthly.length){ box.innerHTML = '<div class="placeholder">暂无数据</div>'; return; }
+  var W = chartWidth(box, 260, 420), H = 270, pL = 48, pR = 22, pT = 30, pB = 34;
+  var max = Math.max.apply(null, monthly.map(function(x){ return N(x.tokens); }).concat([1]));
+  var n = monthly.length;
+  var plotW = W - pL - pR, plotH = H - pT - pB;
+  var slot = plotW/n, bw = Math.min(46, Math.max(6, slot*0.56));
+  var grid='';
+  for (var g=0; g<=4; g++){
+    var v = max*g/4, y = pT + plotH*(1-v/max);
+    grid += '<line class="gridline" x1="' + pL + '" y1="' + y.toFixed(1) + '" x2="' + (W-pR) + '" y2="' + y.toFixed(1) + '"/>'
+         +  '<text class="axis" x="' + (pL-8) + '" y="' + (y+3.5).toFixed(1) + '" text-anchor="end">' + esc(fmtBig(v)) + '</text>';
+  }
+  var maxIdx = 0;
+  monthly.forEach(function(mo,i){ if (N(mo.tokens) > N(monthly[maxIdx].tokens)) maxIdx = i; });
+  var step = Math.max(1, Math.ceil(48/slot));
+  var bars = '', topLabel = '';
+  monthly.forEach(function(mo,i){
+    var cx = pL + slot*i + slot/2;
+    var h = Math.max(2, plotH * N(mo.tokens)/max);
+    var y = H-pB-h;
+    bars += '<rect id="mbar' + i + '" x="' + (cx-bw/2).toFixed(1) + '" y="' + y.toFixed(1) + '" width="' + bw.toFixed(1)
+         + '" height="' + h.toFixed(1) + '" rx="' + Math.min(7, bw/2).toFixed(1) + '" fill="#846BFF"/>';
+    var nearLast = (n-1 - i) < Math.max(1, Math.round(step*0.7));
+    if (i === n-1 || (i % step === 0 && !nearLast)){
+      bars += '<text class="axis" x="' + cx.toFixed(1) + '" y="' + (H-11) + '" text-anchor="middle">'
+           +  esc(String(mo.month).slice(2)) + '</text>';
+    }
+    if (i === maxIdx){
+      topLabel = '<text class="axis v" x="' + cx.toFixed(1) + '" y="' + Math.max(12, y-8).toFixed(1) + '" text-anchor="middle">'
+        + esc(fmtBig(mo.tokens)) + esc(unitOf(mo.tokens)) + '</text>';
+    }
+  });
+  box.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" style="width:100%;height:270px">'
+    + grid + bars + topLabel + '</svg>';
+
+  var tip = el('mtip'), wrap = el('monthlyWrap'), svg = box.querySelector('svg');
+  var cur = -1;
+  function mark(idx, on){
+    var r = el('mbar' + idx);
+    if (r) r.setAttribute('fill', on ? '#6A4FE0' : '#846BFF');
+  }
+  function leaveMonthly(){
+    if (cur >= 0) mark(cur, false);
+    cur = -1;
+    tip.style.opacity = '0';
+  }
+  svg.addEventListener('mousemove', function(ev){
+    var rect = svg.getBoundingClientRect();
+    var relX = (ev.clientX - rect.left) / (rect.width || W) * W;
+    var idx = Math.floor((relX - pL)/slot);
+    if (relX < pL || idx < 0 || idx >= n){ leaveMonthly(); return; }
+    if (idx !== cur){ if (cur >= 0) mark(cur, false); mark(idx, true); cur = idx; }
+    var mo = monthly[idx];
+    var cx = pL + slot*idx + slot/2;
+    var h = Math.max(2, plotH * N(mo.tokens)/max);
+    var wr = wrap.getBoundingClientRect();
+    tip.style.left = Math.max(30, Math.min(wr.width-30, (cx / W) * rect.width)) + 'px';
+    tip.style.top = Math.max(10, (H-pB-h) + 4) + 'px';
+    tip.style.opacity = '1';
+    tip.innerHTML = esc(mo.month) + ' · Token <b>' + esc(fmtInt(mo.tokens)) + '</b>'
+      + (mo.requests != null ? '<br>请求 <b>' + esc(fmtInt(mo.requests)) + '</b>' : '');
+  });
+  svg.addEventListener('mouseleave', leaveMonthly);
+  el('monthlySub').textContent = '最近 ' + n + ' 个月 · 合计 ' + fmtBig(monthly.reduce(function(a,b){ return a + N(b.tokens); },0)) + ' tokens · 悬停查看每月数值';
+}
+
+/* ---------------- 模型环形图 ---------------- */
+var PALETTE = ['#846BFF','#9B84FF','#6A4FE0','#4A3399','#C9C2E8','#A99BF5','#7E6CB8'];
+function renderModels(models){
+  var box = el('donut'), tbl = el('modelTable');
+  if (!models || !models.length){ box.innerHTML = '<div class="placeholder">暂无数据</div>'; tbl.innerHTML = ''; return; }
+  var total = models.reduce(function(a,b){ return a + N(b.tokens); },0) || 1;
+  var top = models.slice(0,6);
+  var rest = models.slice(6);
+  var segs = top.map(function(m){ return { name:m.name, tokens:N(m.tokens), req:N(m.requests) }; });
+  if (rest.length){
+    segs.push({ name:'其他', tokens: rest.reduce(function(a,b){ return a + N(b.tokens); },0),
+                req: rest.reduce(function(a,b){ return a + N(b.requests); },0) });
+  }
+  var S=186, c=S/2, r=66, sw=26, C=2*Math.PI*r;
+  var off=0, circles='';
+  segs.forEach(function(s,i){
+    var frac = N(s.tokens)/total, len = Math.max(0, frac*C - 2);
+    circles += '<circle cx="' + c + '" cy="' + c + '" r="' + r + '" fill="none" stroke="' + PALETTE[i%PALETTE.length]
+      + '" stroke-width="' + sw + '" stroke-dasharray="' + len.toFixed(2) + ' ' + (C-len).toFixed(2)
+      + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 ' + c + ' ' + c + ')"/>';
+    off += frac*C;
+  });
+  box.innerHTML = '<svg viewBox="0 0 ' + S + ' ' + S + '" style="width:186px;height:186px">' + circles
+    + '<text class="donut-big" x="' + c + '" y="' + (c-2) + '" text-anchor="middle">' + esc(fmtBig(total)) + '</text>'
+    + '<text class="donut-center" x="' + c + '" y="' + (c+16) + '" text-anchor="middle">总 Token</text></svg>';
+
+  tbl.innerHTML = '<thead><tr><th>模型</th><th>Token</th><th>请求</th><th>占比</th></tr></thead><tbody>'
+    + segs.map(function(s,i){
+        return '<tr><td><span class="swatch" style="background:' + PALETTE[i%PALETTE.length] + '"></span>' + esc(s.name) + '</td>'
+          + '<td>' + esc(fmtBig(s.tokens)) + '</td><td>' + esc(fmtInt(s.req)) + '</td><td>' + (pct(s.tokens,total)).toFixed(1) + '%</td></tr>';
+      }).join('')
+    + '</tbody>';
+  el('modelSub').textContent = models.length + ' 个模型 · 合计 ' + fmtInt(total) + ' tokens';
+}
+
+/* ---------------- 工具 Top12 ---------------- */
+function renderTools(tools){
+  var box = el('toolList');
+  if (!tools || !tools.length){ box.innerHTML = '<div class="placeholder">暂无数据</div>'; return; }
+  var list = tools.slice(0,12);
+  var max = Math.max.apply(null, list.map(function(x){ return N(x.count); }).concat([1]));
+  box.innerHTML = list.map(function(t){
+    var w = Math.max(2, N(t.count)/max*100);
+    return '<div class="barrow"><div class="bname">' + esc(t.name) + '</div>'
+      + '<div class="track"><i style="width:' + w.toFixed(1) + '%"></i></div>'
+      + '<div class="bval"><b>' + esc(fmtInt(t.count)) + '</b></div></div>';
+  }).join('');
+  el('toolSub').textContent = '共 ' + tools.length + ' 种工具 · ' + fmtInt(tools.reduce(function(a,b){ return a + N(b.count); },0)) + ' 次调用';
+}
+
+/* ---------------- 会话状态分布 ---------------- */
+function renderSessionStatus(agents){
+  var box = el('agentList');
+  if (!agents || !agents.length){ box.innerHTML = '<div class="placeholder">暂无数据</div>'; return; }
+  var max = Math.max.apply(null, agents.map(function(x){ return N(x.total); }).concat([1]));
+  box.innerHTML = agents.map(function(a){
+    var tot = Math.max(1, N(a.total));
+    var ok = N(a.ok), fa = N(a.failed), ca = N(a.cancelled);
+    var scale = 40 + 60 * N(a.total)/max;
+    var w = function(v){ return (v/tot*scale).toFixed(2); };
+    return '<div class="agent-row"><div class="bname">' + esc(a.agent) + '</div>'
+      + '<div class="stack"><i class="ok" style="width:' + w(ok) + '%"></i>'
+      + '<i class="failed" style="width:' + w(fa) + '%"></i>'
+      + '<i class="cancelled" style="width:' + w(ca) + '%"></i></div>'
+      + '<div class="tot"><b>' + esc(fmtInt(a.total)) + '</b></div></div>';
+  }).join('');
+  el('agentSub').textContent = '共 ' + agents.length + ' 类状态 · ' + fmtInt(agents.reduce(function(a,b){ return a + N(b.total); },0)) + ' 个会话';
+}
+
+/* ---------------- 热力图 ---------------- */
+var HEAT_STEPS = ['#EDE9FF','#D6CCFF','#846BFF','#6A4FE0','#4A3399'];
+function renderHeat(heat){
+  var box = el('heat');
+  if (!heat || !heat.length){ box.innerHTML = '<div class="placeholder">暂无数据</div>'; return; }
+  var max = 1, peak = {w:0,h:0,v:0}, sum = 0;
+  heat.forEach(function(row, w){
+    row.forEach(function(v, h){
+      v = N(v); sum += v;
+      if (v > max) max = v;
+      if (v > peak.v) peak = { w:w, h:h, v:v };
+    });
+  });
+  var html = '<div></div>';
+  for (var h=0; h<24; h++) html += '<div class="cl">' + (h%3===0 ? (h<10?'0':'')+h : '') + '</div>';
+  heat.forEach(function(row, w){
+    html += '<div class="rl">' + WEEK[w] + '</div>';
+    row.forEach(function(v, h){
+      var val = N(v), ratio = max ? val/max : 0;
+      var idx = val === 0 ? 0 : Math.min(4, 1 + Math.floor(ratio*3.999));
+      var bg = HEAT_STEPS[idx];
+      html += '<div class="cell" style="background:' + bg + '" data-tip="' + esc(WEEK[w] + ' ' + (h<10?'0':'') + h + ':00 · ' + val + ' 次生成') + '"></div>';
+    });
+  });
+  box.innerHTML = html;
+  el('heatSub').innerHTML = '累计 ' + fmtInt(sum) + ' 次生成 · 峰值 ' + esc(WEEK[peak.w]) + ' ' + (peak.h<10?'0':'') + peak.h + ':00（<b>' + fmtInt(peak.v) + '</b> 次）';
+}
+
+/* 热力图 & 通用悬浮提示 */
+(function heatTip(){
+  var tip = el('tip');
+  document.addEventListener('mouseover', function(ev){
+    var cell = ev.target.closest ? ev.target.closest('.cell') : null;
+    if (!cell) return;
+    tip.textContent = cell.getAttribute('data-tip') || '';
+    tip.style.color = '';
+    var r = cell.getBoundingClientRect();
+    tip.style.left = (r.left + r.width/2) + 'px';
+    tip.style.top = (r.top - 8) + 'px';
+    tip.style.opacity = '1';
+    tip.style.position = 'fixed';
+  });
+  document.addEventListener('mouseout', function(ev){
+    var cell = ev.target.closest ? ev.target.closest('.cell') : null;
+    if (!cell) return;
+    tip.style.opacity = '0';
+    tip.style.position = 'absolute';
+  });
+})();
+
+/* ---------------- 会话表格 ---------------- */
+function renderConvs(d){
+  var list = (d.conversations || []).slice();
+  var q = (state.query || '').trim().toLowerCase();
+  if (q) list = list.filter(function(c){ return String(c.title || '').toLowerCase().indexOf(q) >= 0; });
+  var key = state.sort.key, desc = state.sort.desc;
+  list.sort(function(a,b){
+    var va = a[key], vb = b[key];
+    if (key === 'title' || key === 'model' || key === 'status' || key === 'created'){
+      va = String(va || ''); vb = String(vb || '');
+      return desc ? (va < vb ? 1 : va > vb ? -1 : 0) : (va > vb ? 1 : va < vb ? -1 : 0);
+    }
+    return desc ? N(vb) - N(va) : N(va) - N(vb);
+  });
+  var tb = document.querySelector('#convTable tbody');
+  tb.innerHTML = list.map(function(c){
+    var st = String(c.status || 'unknown');
+    var pctUsed = c.size ? Math.min(100, N(c.used)/N(c.size)*100) : 0;
+    return '<tr>'
+      + '<td><div class="celltitle"><span class="sdot ' + esc(st) + '" title="' + esc(st) + '"></span>'
+      + '<span class="txt" title="' + esc(c.title) + '">' + esc(c.title) + '</span></div></td>'
+      + '<td style="color:var(--muted);white-space:nowrap">' + esc(c.model || '—') + '</td>'
+      + '<td style="white-space:nowrap"><span class="sdot ' + esc(st) + '" style="display:inline-block;vertical-align:middle;margin-right:5px"></span>' + esc(st) + '</td>'
+      + '<td class="r">' + pctUsed.toFixed(0) + '%</td>'
+      + '<td class="r">' + (N(c.credit) ? Number(c.credit).toFixed(2) : '—') + '</td>'
+      + '<td style="color:var(--muted);white-space:nowrap">' + esc(c.last_activity || c.created || '—') + '</td>'
+      + '</tr>';
+  }).join('') || '<tr><td colspan="6"><div class="placeholder">没有匹配的会话</div></td></tr>';
+
+  document.querySelectorAll('#convTable thead th').forEach(function(th){
+    var arrow = th.querySelector('.arrow');
+    if (!arrow) return;
+    arrow.textContent = (th.getAttribute('data-key') === key) ? (desc ? '▼' : '▲') : '';
+  });
+  el('convCount').textContent = list.length + ' / ' + (d.conversations || []).length + ' 个会话';
+}
+
+el('q').addEventListener('input', function(e){
+  state.query = e.target.value;
+  if (state.data) renderConvs(state.data);
+});
+document.querySelectorAll('#convTable thead th').forEach(function(th){
+  th.addEventListener('click', function(){
+    var k = th.getAttribute('data-key');
+    if (!k) return;
+    if (state.sort.key === k) state.sort.desc = !state.sort.desc;
+    else state.sort = { key:k, desc:true };
+    if (state.data) renderConvs(state.data);
+  });
+});
+
+/* ---------------- 技能与系统 ---------------- */
+function renderSkillTypes(d){
+  var ss = d.skill_stats || {};
+  var types = ss.by_type || {};
+  var arr = Object.keys(types).map(function(k){ return { name:k, count:N(types[k]) }; })
+    .sort(function(a,b){ return b.count-a.count; }).slice(0,10);
+  var max = Math.max.apply(null, arr.map(function(x){ return x.count; }).concat([1]));
+  el('prodExt').innerHTML = arr.map(function(x){
+    return '<div class="barrow"><div class="bname">' + esc(x.name) + '</div>'
+      + '<div class="track"><i style="width:' + Math.max(2, x.count/max*100).toFixed(1) + '%"></i></div>'
+      + '<div class="bval"><b>' + esc(fmtInt(x.count)) + '</b></div></div>';
+  }).join('') || '<div class="placeholder">暂无技能</div>';
+  el('prodSub').textContent = '共 ' + fmtInt(ss.total) + ' 项技能 · ' + fmtInt(ss.enabled) + ' 项启用';
+}
+
+function renderRecentConvs(d){
+  var list = (d.conversations || []).slice(0,12);
+  el('prodRecent').innerHTML = list.map(function(c){
+    return '<li><span class="nm" title="' + esc(c.title) + '">' + esc(c.title) + '</span><span class="tm">' + esc(String(c.last_activity||'').slice(5)) + '</span></li>';
+  }).join('') || '<li><span class="nm">暂无会话</span></li>';
+  el('prodRecentSub').textContent = '最近 ' + Math.min(12, (d.conversations||[]).length) + ' 个会话';
+}
+
+function renderSkillSources(d){
+  var ss = d.skill_stats || {}, sources = ss.by_source || {};
+  var arr = Object.keys(sources).map(function(k){ return { name:k, count:N(sources[k]) }; })
+    .sort(function(a,b){ return b.count-a.count; });
+  var max = Math.max.apply(null, arr.map(function(x){ return x.count; }).concat([1]));
+  var total = arr.reduce(function(a,b){ return a + b.count; },0) || 1;
+  el('memList').innerHTML = arr.map(function(x){
+    return '<div class="barrow"><div class="bname">' + esc(x.name) + '</div>'
+      + '<div class="track"><i style="width:' + Math.max(2, x.count/max*100).toFixed(1) + '%"></i></div>'
+      + '<div class="bval">' + pct(x.count, total).toFixed(1) + '%</div></div>';
+  }).join('') || '<div class="placeholder">暂无来源</div>';
+  el('memSub').innerHTML = '可用户调用 <b>' + fmtInt(ss.invocable) + '</b> 项 · 内置/用户来源共 ' + arr.length + ' 类';
+}
+
+function renderSystem(d){
+  var m = d.meta || {};
+  var items = [
+    { n: m.is_demo ? '演示' : '实时', l: '数据模式' },
+    { n: fmtInt(m.trace_files || d.counts.traces || 0), l: 'Trace 文件' },
+    { n: fmtInt(m.uptime_sec || 0) + 's', l: '运行时长' },
+    { n: Math.round(N(m.cache_age_ms)) + 'ms', l: '缓存年龄' }
+  ];
+  el('apprGrid').innerHTML = items.map(function(it){
+    return '<div class="s"><div class="n num">' + esc(it.n) + '</div><div class="l">' + esc(it.l) + '</div></div>';
+  }).join('');
+  el('apprSub').textContent = (m.is_demo ? '演示数据 · ' : '') + (m.app || 'WorkBuddy Dashboard') + ' v' + (m.version || '—') + ' · 库修改 ' + (m.db_mtime || '—');
+}
+
+/* ---------------- 系统条 ---------------- */
+function renderMeta(d, latency){
+  var meta = d.meta || {};
+  var db = el('sysDb');
+  if (meta.is_demo){
+    db.textContent = '演示数据（未检测到本机 WorkBuddy）';
+    db.title = '当前展示内置演示数据。';
+  } else {
+    db.textContent = String(meta.db_path || '—');
+    db.title = meta.db_path || '';
+  }
+  el('sysMtime').textContent = meta.db_mtime || '—';
+  el('sysLat').textContent = (latency == null ? '—' : Math.round(latency) + ' ms');
+  el('sysCache').textContent = (meta.cache_age_ms == null ? '—' : Math.round(N(meta.cache_age_ms)) + ' ms');
+  var t = d.tokens || {};
+  el('sysSpan').textContent = (t.first_day ? t.first_day + ' → ' + t.last_day + '（' + fmtInt(t.active_days) + ' 天）' : '—');
+  el('syncTime').textContent = hhmmss();
+}
+
+/* ---------------- 错误提示 ---------------- */
+function showError(msg){
+  el('liveTag').classList.add('off');
+  el('liveText').textContent = '重连中';
+  if (!state.data){
+    el('kpis').innerHTML = '<div class="card" style="grid-column:1/-1"><div class="placeholder">'
+      + esc(msg || '数据加载失败，正在重试…') + '</div></div>';
+  }
+}
+
+/* ---------------- 渲染总入口 ---------------- */
+function sessionStatusGroups(convs){
+  var g = {};
+  (convs || []).forEach(function(c){
+    var s = String(c.status || 'unknown');
+    var k = (s === 'completed' || s === 'ok') ? '完成'
+          : (s === 'error' || s === 'failed') ? '错误'
+          : (s === 'cancelled') ? '取消' : '进行中/其他';
+    g[k] = (g[k] || 0) + 1;
+  });
+  return Object.keys(g).map(function(k){ return { agent:k, total:g[k] }; });
+}
+
+function renderAll(d){
+  renderKpis(d);
+  renderDaily(d.daily || []);
+  renderMonthly(d.monthly || []);
+  renderModels(d.models || []);
+  renderTools(d.tools || []);
+  renderSessionStatus(sessionStatusGroups(d.conversations));
+  renderHeat(d.heatmap || []);
+  renderConvs(d);
+  renderSkillTypes(d);
+  renderRecentConvs(d);
+  renderSkillSources(d);
+  renderSystem(d);
+}
+
+/* ---------------- 数据拉取 ---------------- */
+var busy = false;
+
+var rzTimer = null;
+window.addEventListener('resize', function(){
+  clearTimeout(rzTimer);
+  rzTimer = setTimeout(function(){
+    if (!state.data) return;
+    renderDaily(state.data.daily || []);
+    renderMonthly(state.data.monthly || []);
+    fitKpiValues();
+  }, 160);
+});
+function refresh(force){
+  if (busy) return;
+  busy = true;
+  var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+  fetch('/api/stats?_=' + Date.now() + tokenQS(), { cache:'no-store' })
+    .then(function(r){
+      if (r.status === 401){ throw new Error('401 需要访问口令，请用 /?token=你的口令 打开'); }
+      return r.json();
+    })
+    .then(function(d){
+      var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+      var latency = t1 - t0;
+      if (!d || d.error){
+        showError(d && d.error ? String(d.error) : '接口返回错误');
+        return;
+      }
+      state.data = d;
+      renderAll(d);
+      renderMeta(d, latency);
+      el('liveTag').classList.remove('off');
+      el('liveText').textContent = 'LIVE';
+    })
+    .catch(function(err){
+      showError('无法连接本地服务（' + (err && err.message ? err.message : 'network error') + '）');
+    })
+    .then(function(){ busy = false; });
+}
+
+el('btnRefresh').addEventListener('click', function(){ refresh(true); });
+
+refresh();
+setInterval(function(){
+  if (document.hidden) return;
+  refresh();
+}, 5000);
+document.addEventListener('visibilitychange', function(){
+  if (!document.hidden) refresh();
+});
+
+/* ---------------- 导航高亮 ---------------- */
+var sections = ['overview','trend','models','projects','output'];
+if ('IntersectionObserver' in window){
+  var io = new IntersectionObserver(function(entries){
+    entries.forEach(function(en){
+      if (!en.isIntersecting) return;
+      var id = en.target.id;
+      document.querySelectorAll('#nav a').forEach(function(a){
+        a.classList.toggle('on', a.getAttribute('href') === '#' + id);
+      });
+    });
+  }, { rootMargin:'-20% 0px -70% 0px', threshold:0 });
+  sections.forEach(function(id){ var s = el(id); if (s) io.observe(s); });
+}
+document.querySelectorAll('#nav a').forEach(function(a){
+  a.addEventListener('click', function(ev){
+    ev.preventDefault();
+    var target = document.querySelector(a.getAttribute('href'));
+    if (target) target.scrollIntoView({ behavior:'smooth', block:'start' });
+    document.querySelectorAll('#nav a').forEach(function(x){ x.classList.remove('on'); });
+    a.classList.add('on');
+  });
+});
+
+/* ---------------- 系统状态条：鼠标按住左右拖动（触屏原生滑动） ---------------- */
+(function(){
+  var bar = document.getElementById('sysbar');
+  if (!bar) return;
+  var down = false, startX = 0, startScroll = 0;
+  bar.addEventListener('mousedown', function(e){
+    if (e.button !== 0) return;
+    down = true; startX = e.pageX; startScroll = bar.scrollLeft;
+    bar.classList.add('dragging');
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', function(e){
+    if (!down) return;
+    bar.scrollLeft = startScroll - (e.pageX - startX);
+  });
+  window.addEventListener('mouseup', function(){
+    down = false; bar.classList.remove('dragging');
+  });
+})();
+})();
+</script>
+</body>
+</html>
