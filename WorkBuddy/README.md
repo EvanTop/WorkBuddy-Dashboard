@@ -17,11 +17,13 @@ Token 消耗、请求趋势、模型占比、工具排行、会话记录、活�
 
 就这么简单。按 `Ctrl + C` 停止。
 
+> 想在 WorkBuddy 里一句话启动？把包内 `workbuddy-skill/` 整个目录复制到 `~/.workbuddy/skills/workbuddy-dashboard/` 即可（Windows 为 `%USERPROFILE%\.workbuddy\skills\workbuddy-dashboard\`）。
+
 > 想先看效果？用演示数据启动：`WORKBUDDY_DEMO=1 python3 dashboard.py`（Windows 用 `set WORKBUDDY_DEMO=1 && python dashboard.py`）。
 
 ## 数据从哪来
 
-自动发现本机 `~/.workbuddy/workbuddy.db` 和 `~/.workbuddy/traces/`，找不到就用自带的脱敏演示数据。也可用 `WORKBUDDY_DB` / `WORKBUDDY_TRACES` 手动指定。
+自动发现本机两个版本的数据：国内版 `~/.workbuddy/`、国际版 `~/.workbuddy-ai/`（各含 `workbuddy.db` 与 `traces/`），页面右上角可一键切换，选择会被记住。找不到时用自带的脱敏演示数据。也可用 `WORKBUDDY_DB` / `WORKBUDDY_TRACES`（国内版）或 `WORKBUDDY_INTL_DB` / `WORKBUDDY_INTL_TRACES`（国际版）手动指定，`WORKBUDDY_EDITION=cn|intl` 设置默认版本。
 
 ## 隐私
 
