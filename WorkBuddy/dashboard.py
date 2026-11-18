@@ -17,14 +17,18 @@ traces/*.jsonl 仅只读流式解析。
     Linux   ./start-linux.sh
     任意平台 python3 dashboard.py
 
-首次启动自动发现 ~/.workbuddy，找不到时回落到 demo/ 脱敏演示数据。
+首次启动自动发现 ~/.workbuddy（国内版）与 ~/.workbuddy-ai（国际版），
+看板右上角可切换版本；找不到时回落到 demo/ 脱敏演示数据。
 
 环境变量:
     PANEL_BIND       监听地址，默认 127.0.0.1（仅本机访问，安全默认值）
     PANEL_PORT       固定端口；不设置则从 8790 起自动顺延
     PANEL_TOKEN      访问口令，默认 admin；显式置空则免口令
-    WORKBUDDY_DB     手动指定 workbuddy.db 路径或其所在目录
-    WORKBUDDY_TRACES 手动指定 traces 目录
+    WORKBUDDY_EDITION     默认版本：cn（国内版）或 intl（国际版），默认 cn
+    WORKBUDDY_DB     手动指定国内版 workbuddy.db 路径或其所在目录
+    WORKBUDDY_TRACES 手动指定国内版 traces 目录
+    WORKBUDDY_CN_DB / WORKBUDDY_CN_TRACES       同 WORKBUDDY_DB / WORKBUDDY_TRACES
+    WORKBUDDY_INTL_DB / WORKBUDDY_INTL_TRACES   手动指定国际版数据路径
     WORKBUDDY_NO_AUTH=1   等同 PANEL_TOKEN 置空，直接免口令
     WORKBUDDY_DEMO=1      强制使用 demo/ 演示数据
     WORKBUDDY_NO_BROWSER=1 启动时不自动打开浏览器
@@ -89,7 +93,24 @@ def _resolve_token():
 
 PANEL_TOKEN = _resolve_token()
 
-_last_source = ["auto"]
+EDITIONS = {
+    "cn": {"label": "国内版", "dir": ".workbuddy"},
+    "intl": {"label": "国际版", "dir": ".workbuddy-ai"},
+}
+_ED_ENV = _env("WORKBUDDY_EDITION", "").lower()
+DEFAULT_EDITION = "intl" if _ED_ENV in ("intl", "international", "ai", "global") else "cn"
+
+
+def normalize_edition(e):
+    e = str(e or "").strip().lower()
+    if e in ("intl", "international", "ai", "global"):
+        return "intl"
+    if e in ("cn", "domestic", "china"):
+        return "cn"
+    return DEFAULT_EDITION
+
+
+_last_source = {}
 
 
 def log(msg):
@@ -105,19 +126,25 @@ def user_home():
     return os.path.expanduser("~")
 
 
-def discover_sources():
-    """返回 (db_path, traces_dir, source_label)。按优先级自动发现。"""
+def discover_sources(edition=None):
+    """返回 (db_path, traces_dir, source_label)。按版本与优先级自动发现。"""
+    edition = normalize_edition(edition)
     demo_mode = _env("WORKBUDDY_DEMO", "").lower() in ("1", "true", "yes", "on")
     if demo_mode:
         return (os.path.join(DEMO_DIR, "workbuddy.db"),
                 os.path.join(DEMO_DIR, "traces"), "demo")
 
-    db_env = _env("WORKBUDDY_DB", "")
-    tr_env = _env("WORKBUDDY_TRACES", "")
+    prefix = "WORKBUDDY_CN" if edition == "cn" else "WORKBUDDY_INTL"
+    db_env = _env(prefix + "_DB", "")
+    tr_env = _env(prefix + "_TRACES", "")
+    if edition == "cn":
+        db_env = db_env or _env("WORKBUDDY_DB", "")
+        tr_env = tr_env or _env("WORKBUDDY_TRACES", "")
 
     home = user_home()
-    default_db = os.path.join(home, ".workbuddy", "workbuddy.db")
-    default_tr = os.path.join(home, ".workbuddy", "traces")
+    base_dir = os.path.join(home, EDITIONS[edition]["dir"])
+    default_db = os.path.join(base_dir, "workbuddy.db")
+    default_tr = os.path.join(base_dir, "traces")
 
     db_path = ""
     traces_dir = ""
@@ -143,6 +170,16 @@ def discover_sources():
     if os.path.isfile(demo_db):
         return demo_db, demo_tr, "demo"
     return "", "", "none"
+
+
+def editions_info():
+    """各版本的本机数据可用性，供前端切换控件展示。"""
+    out = []
+    for eid in ("cn", "intl"):
+        _, _, source = discover_sources(eid)
+        out.append({"id": eid, "label": EDITIONS[eid]["label"],
+                    "available": source == "local", "source": source})
+    return out
 
 
 # ---------------------------------------------------------------- 只读工具
@@ -234,8 +271,17 @@ def day_key(s):
 
 
 # ---------------------------------------------------------------- traces 采集
-_TRACES = {"ts": 0.0, "data": None, "running": False}
+_TRACES = {}
 _TRACES_LOCK = threading.Lock()
+
+
+def _tr_state(edition):
+    with _TRACES_LOCK:
+        st = _TRACES.get(edition)
+        if st is None:
+            st = {"ts": 0.0, "data": None, "running": False}
+            _TRACES[edition] = st
+        return st
 
 
 def _empty_traces():
@@ -373,35 +419,38 @@ def scan_traces(traces_dir):
     return out
 
 
-def traces_snapshot(traces_dir):
-    age = time.time() - _TRACES["ts"]
-    if age > TRACES_TTL and not _TRACES["running"] and _TRACES["data"] is None:
-        return _refresh_traces_sync(traces_dir)
-    if age > COLD_TTL and not _TRACES["running"]:
-        _kick_traces_refresh(traces_dir)
+def traces_snapshot(traces_dir, edition):
+    st = _tr_state(edition)
+    age = time.time() - st["ts"]
+    if age > TRACES_TTL and not st["running"] and st["data"] is None:
+        return _refresh_traces_sync(traces_dir, edition)
+    if age > COLD_TTL and not st["running"]:
+        _kick_traces_refresh(traces_dir, edition)
     with _TRACES_LOCK:
-        data = _TRACES["data"]
-    return (data if data is not None else _refresh_traces_sync(traces_dir)), age
+        data = st["data"]
+    return (data if data is not None else _refresh_traces_sync(traces_dir, edition)), age
 
 
-def _refresh_traces_sync(traces_dir):
+def _refresh_traces_sync(traces_dir, edition):
     data = scan_traces(traces_dir)
+    st = _tr_state(edition)
     with _TRACES_LOCK:
-        _TRACES["data"] = data
-        _TRACES["ts"] = time.time()
+        st["data"] = data
+        st["ts"] = time.time()
     return data, 0.0
 
 
-def _kick_traces_refresh(traces_dir):
-    _TRACES["running"] = True
+def _kick_traces_refresh(traces_dir, edition):
+    st = _tr_state(edition)
+    st["running"] = True
 
     def _run():
         try:
-            _refresh_traces_sync(traces_dir)
+            _refresh_traces_sync(traces_dir, edition)
         except Exception:
             pass
         finally:
-            _TRACES["running"] = False
+            st["running"] = False
 
     threading.Thread(target=_run, daemon=True).start()
 
@@ -533,13 +582,14 @@ def day_span(first_day, last_day):
 
 
 # ---------------------------------------------------------------- 汇总
-def compute_stats():
-    db_path, traces_dir, source = discover_sources()
-    _last_source[0] = source
+def compute_stats(edition=None):
+    edition = normalize_edition(edition)
+    db_path, traces_dir, source = discover_sources(edition)
+    _last_source[edition] = source
     today = datetime.now().strftime("%Y-%m-%d")
 
     con = ro_connect(db_path)
-    tr, traces_age = traces_snapshot(traces_dir)
+    tr, traces_age = traces_snapshot(traces_dir, edition)
 
     payload = {
         "tokens": {}, "counts": {}, "daily": [], "monthly": [], "models": [],
@@ -621,6 +671,8 @@ def compute_stats():
         "traces_age_ms": round(traces_age * 1000.0, 1),
         "uptime_sec": round(time.time() - START_TS, 1),
         "source": source, "is_demo": source == "demo",
+        "edition": edition, "edition_label": EDITIONS[edition]["label"],
+        "editions": editions_info(),
         "app": APP_NAME, "version": VERSION,
     }
 
@@ -632,12 +684,22 @@ def compute_stats():
 # ---------------------------------------------------------------- 缓存
 _LOCK = threading.Lock()
 _COMPUTE_LOCK = threading.Lock()
-_CACHE = {"ts": 0.0, "payload": None}
+_CACHE = {}
 
 
-def _cache_hit(age):
+def _cache_state(edition):
     with _LOCK:
-        cached = _CACHE["payload"]
+        st = _CACHE.get(edition)
+        if st is None:
+            st = {"ts": 0.0, "payload": None}
+            _CACHE[edition] = st
+        return st
+
+
+def _cache_hit(age, edition):
+    st = _cache_state(edition)
+    with _LOCK:
+        cached = st["payload"]
     if cached is None:
         return None
     out = dict(cached)
@@ -649,24 +711,26 @@ def _cache_hit(age):
     return out
 
 
-def get_stats():
-    age = time.time() - _CACHE["ts"]
-    hit = _cache_hit(age)
+def get_stats(edition=None):
+    edition = normalize_edition(edition)
+    st = _cache_state(edition)
+    age = time.time() - st["ts"]
+    hit = _cache_hit(age, edition)
     if hit is not None and age <= CACHE_TTL:
         return hit
     with _COMPUTE_LOCK:
-        age = time.time() - _CACHE["ts"]
-        hit = _cache_hit(age)
+        age = time.time() - st["ts"]
+        hit = _cache_hit(age, edition)
         if hit is not None and age <= CACHE_TTL:
             return hit
         try:
-            payload = compute_stats()
+            payload = compute_stats(edition)
             with _LOCK:
-                _CACHE["payload"] = payload
-                _CACHE["ts"] = time.time()
-            return _cache_hit(0.0) or payload
+                st["payload"] = payload
+                st["ts"] = time.time()
+            return _cache_hit(0.0, edition) or payload
         except Exception:
-            hit = _cache_hit(age)
+            hit = _cache_hit(age, edition)
             if hit is not None:
                 return hit
             return {"error": traceback.format_exc(limit=2), "meta": {"app": APP_NAME,
@@ -751,7 +815,8 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/healthz":
             payload = {
                 "ok": True, "app": APP_NAME, "version": VERSION,
-                "source": _last_source[0], "is_demo": _last_source[0] == "demo",
+                "source": _last_source.get(DEFAULT_EDITION, "auto"),
+                "is_demo": _last_source.get(DEFAULT_EDITION) == "demo",
                 "uptime_sec": round(time.time() - START_TS, 1),
                 "server_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             }
@@ -763,7 +828,8 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(401, json.dumps({"error": "unauthorized"}, ensure_ascii=False),
                            "application/json; charset=utf-8")
                 return
-            payload = get_stats()
+            edition = normalize_edition((qs.get("edition") or [""])[0])
+            payload = get_stats(edition)
             self._send(200, json.dumps(payload, ensure_ascii=False), "application/json; charset=utf-8")
             return
 
@@ -815,10 +881,12 @@ def serve():
     except Exception:
         pass
 
-    db_path, traces_dir, source = discover_sources()
     log("%s v%s 已启动：%s" % (APP_NAME, VERSION, url))
-    log("数据源：%s | %s" % (source, db_path or "无"))
-    log("traces：%s" % (traces_dir or "无"))
+    for eid in ("cn", "intl"):
+        db_path, traces_dir, source = discover_sources(eid)
+        log("%s：%s | %s | traces %s" % (EDITIONS[eid]["label"], source,
+                                          db_path or "无", traces_dir or "无"))
+    log("默认版本：%s（看板内可切换）" % EDITIONS[DEFAULT_EDITION]["label"])
     log("访问口令：%s" % ("已启用（默认 admin）" if PANEL_TOKEN else "已关闭"))
 
     no_browser = _env("WORKBUDDY_NO_BROWSER", "").lower() in ("1", "true", "yes", "on")
