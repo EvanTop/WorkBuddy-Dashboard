@@ -1,4 +1,10 @@
 
+最新版本v1.1：
+
+https://github.com/EvanTop/WorkBuddy-Dashboard/releases
+
+---
+
 <img width="1676" height="1320" alt="image" src="https://github.com/user-attachments/assets/479054e4-7ac1-4a69-a92e-2fc026719ea5" />
 
 
